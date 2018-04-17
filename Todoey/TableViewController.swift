@@ -10,8 +10,9 @@ import UIKit
 
 class TableViewController: UITableViewController {
     
-    let items = ["Kela", "Chawal", "Pulao"]
-
+    var items = ["Kela", "Chawal", "Pulao"]
+    var addTf : UITextField?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
@@ -34,5 +35,26 @@ class TableViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        let alertController = UIAlertController(title: "Add an item", message: "What do you have in mind?", preferredStyle: UIAlertControllerStyle.alert)
+        alertController.addTextField { (textField) in
+            self.addTf = textField
+            textField.placeholder = "Enter item here"
+        }
+        alertController.addAction(UIAlertAction(title: "Done", style: .default, handler: { (action) in
+            if let textField = self.addTf {
+                if let text = textField.text {
+                    if !text.isEmpty {
+                        self.items.append(text)
+                        self.tableView.reloadData()
+                    }
+                }
+            }
+        }))
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        self.present(alertController, animated: true, completion: nil)
+        
+    }
+    
 }
 
