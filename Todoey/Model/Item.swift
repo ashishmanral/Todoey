@@ -8,7 +8,7 @@
 
 import Foundation
 
-class Item {
+class Item : Codable {
     
     let itemName : String?
     var checked = false
