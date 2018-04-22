@@ -7,16 +7,22 @@
 //
 
 import UIKit
+import CoreData
 
 class TableViewController: UITableViewController {
     
     var items = [Item]()
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                            .first?.appendingPathComponent("Items.plist")
+    var category : Category? {
+        didSet {
+            items = TodoeyHelper.loadItems(categoryName: (category?.name)!)
+        }
+    }
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        decodeItemList()
+        print(FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask))
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -33,9 +39,9 @@ class TableViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         items[indexPath.row].checked = items[indexPath.row].checked == false ? true : false
-        encodeItemList()
         tableView.cellForRow(at: indexPath)?.accessoryType = items[indexPath.row].checked ? .checkmark : .none
-        //tableView.deselectRow(at: indexPath, animated: true)
+        TodoeyHelper.saveData()
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -50,8 +56,12 @@ class TableViewController: UITableViewController {
             if let textField = addTf {
                 if let text = textField.text {
                     if !text.isEmpty {
-                        self.items.append(Item(itemName: text))
-                        self.encodeItemList()
+                        let newItem = Item(context: self.context)
+                        newItem.itemName = text
+                        newItem.checked = false
+                        newItem.category = self.category
+                        self.items.append(newItem)
+                        TodoeyHelper.saveData()
                         self.tableView.reloadData()
                     }
                 }
@@ -62,27 +72,33 @@ class TableViewController: UITableViewController {
         
     }
     
-    func encodeItemList() {
-        let encoder = PropertyListEncoder()
-        do {
-            let data = try encoder.encode(self.items)
-            try data.write(to : self.dataFilePath!)
-        } catch {
-            print("Error encoding")
-        }
-    }
-    
-    func decodeItemList() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-                items = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error decoding")
-            }
-            
-        }
-    }
-    
 }
+
+extension TableViewController: UISearchBarDelegate {
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        var predicate : NSPredicate?
+        if searchBar.text?.count != 0 {
+            predicate = NSPredicate(format: "itemName CONTAINS[cd] %@", searchText)
+            request.sortDescriptors = [NSSortDescriptor(key: "itemName", ascending: true)]
+        }
+        items = TodoeyHelper.loadItems(with: request, additionalPredicate: predicate, categoryName: (category?.name)!)
+        tableView.reloadData()
+    }
+    
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+        searchBar.setShowsCancelButton(true, animated: true)
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+        searchBar.setShowsCancelButton(false, animated: true)
+        searchBar.text = ""
+        items = TodoeyHelper.loadItems(categoryName: (category?.name)!)
+        tableView.reloadData()
+    }
+
+}
+
 
